@@ -1,0 +1,9 @@
+fastapi
+flask
+langchain
+openai
+requests
+zaproxy
+pandas
+numpy
+uvicorn[standard]

@@ -1,0 +1,17 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: Dawn_Scanner
+    ports:
+      - "5000:5000"                # Flask/FastAPI
+      # - "8000:8000"              # 如需额外端口可取消注释
+    volumes:
+      - .:/app                     # 挂载当前目录到容器，实现代码热更新
+    stdin_open: true              # 等价于 -i
+    tty: true                     # 等价于 -t
+    # command: bash               # 可显式指定，但 Dockerfile 的 CMD 已是 bash
