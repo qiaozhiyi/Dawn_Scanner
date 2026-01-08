@@ -1,17 +1,81 @@
-# docker-compose.yml
+# docker-compose.yml for Dawn Scanner
 version: '3.8'
 
 services:
+  go-backend:
+    build:
+      context: ./go-backend
+      dockerfile: Dockerfile
+    container_name: dawn-scanner-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - GO_ENV=production
+      - PORT=8080
+      - LLM_SERVICE_URL=http://llm-service:8000
+      - DEFAULT_AUTH_TOKEN=dawn_scanner_dev_token
+      - TASK_STORE_PATH=/app/data/tasks/tasks.json
+    volumes:
+      - dawn-data:/app/data
+      - ./logs:/app/logs
+    depends_on:
+      - llm-service
+    restart: unless-stopped
+
+  python-worker:
+    build:
+      context: .
+      dockerfile: python-worker/Dockerfile
+    container_name: dawn-scanner-worker
+    environment:
+      - PYTHON_ENV=production
+      - SCAN_TIMEOUT=300
+    volumes:
+      - dawn-data:/app/data
+    depends_on:
+      - go-backend
+    restart: unless-stopped
+
+  llm-service:
+    build:
+      context: .
+      dockerfile: llm-service/Dockerfile
+    container_name: dawn-scanner-llm
+    ports:
+      - "8000:8000"
+    environment:
+      - ENV=production
+      - PORT=8000
+      - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY:-sk-83dc2763afc24c23adefc1c502270ab4}
+    volumes:
+      - dawn-data:/app/data
+    restart: unless-stopped
+
+  # 开发环境服务
   dev:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: Dawn_Scanner
+    container_name: dawn-scanner-dev
     ports:
-      - "5000:5000"                # Flask/FastAPI
-      # - "8000:8000"              # 如需额外端口可取消注释
+      - "8080:8080"
+      - "8000:8000"
+    environment:
+      - GO_ENV=development
+      - PYTHON_ENV=development
+      - ENV=development
+      - PORT=8080
+      - LLM_SERVICE_URL=http://llm-service:8000
+      - DEFAULT_AUTH_TOKEN=dawn_scanner_dev_token
     volumes:
-      - .:/app                     # 挂载当前目录到容器，实现代码热更新
-    stdin_open: true              # 等价于 -i
-    tty: true                     # 等价于 -t
-    # command: bash               # 可显式指定，但 Dockerfile 的 CMD 已是 bash
+      - .:/app
+      - dawn-data:/app/data
+    stdin_open: true
+    tty: true
+    command: bash
+    depends_on:
+      - llm-service
+
+volumes:
+  dawn-data:
+    driver: local

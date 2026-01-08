@@ -1,11 +1,12 @@
-# Dockerfile
+# Dockerfile for Dawn Scanner - Multi-component application
 FROM ubuntu:22.04
 
 LABEL authors="qiaozhiyi"
+LABEL description="Dawn Scanner - Vulnerability Scanner with LLM Integration"
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
-    GO_VERSION=1.25.5 \
+    GO_VERSION=1.21 \
     NODE_VERSION=20
 
 WORKDIR /app
@@ -18,30 +19,39 @@ RUN apt-get update && \
         ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-# 安装官方 Go（1.25.5 是当前最新稳定版）
+# 安装官方 Go
 RUN wget -O go.tar.gz "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz" && \
     tar -C /usr/local -xzf go.tar.gz && \
     rm go.tar.gz
 
-# 安装 Node.js 20 LTS（最新稳定版本）
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
-    apt-get install -y nodejs && \
-    npm install -g npm@latest && \
-    rm -rf /var/lib/apt/lists/*
-
 ENV PATH="/usr/local/go/bin:/usr/local/bin:${PATH}"
 
-# 验证安装
-RUN node -v && npm -v
+# 验证 Go 安装
+RUN go version
 
 # 安装 Python 依赖
 COPY requirements.txt /tmp/requirements.txt
 RUN pip3 install --no-cache-dir --upgrade pip && \
     pip3 install --no-cache-dir -r /tmp/requirements.txt
 
-# 复制代码（实际运行时会被 volume 覆盖，此处用于离线构建依赖）
-COPY . /app
+# 创建应用目录结构
+RUN mkdir -p /app/data/tasks /app/data/results /app/data/reports /app/logs
 
-EXPOSE 5000
+# 复制 Go 后端源码
+COPY go-backend/ /app/go-backend/
+
+# 构建 Go 后端
+WORKDIR /app/go-backend
+RUN go mod download
+RUN CGO_ENABLED=0 GOOS=linux go build -o dawn-scanner .
+
+# 返回到主目录
+WORKDIR /app
+
+# 复制其他组件源码
+COPY python-worker/ /app/python-worker/
+COPY llm-service/ /app/llm-service/
+
+EXPOSE 8080
 
 CMD ["bash"]
