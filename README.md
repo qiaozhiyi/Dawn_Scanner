@@ -9,11 +9,11 @@ Dawn_Scanner/
 │  ├─ report_client.go
 │  └─ Dockerfile
 ├─ python-worker/
+│  ├─ app.py
 │  ├─ worker.py
 │  └─ Dockerfile
 ├─ llm-service/
 │  ├─ app.py
-│  ├─ report_chain.py
 │  └─ Dockerfile
 ├─ data/
 │  ├─ tasks/
@@ -21,6 +21,5 @@ Dawn_Scanner/
 │  └─ reports/
 ├─ chroma/
 ├─ docker-compose.yml
-├─ .env.example
 └─ README.md
 ```

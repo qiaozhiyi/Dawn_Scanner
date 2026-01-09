@@ -69,7 +69,9 @@ class ReportChain:
 
     def __init__(self):
         # Initialize the LLM with Tongyi Qwen
-        api_key = os.getenv("DASHSCOPE_API_KEY", "sk-83dc2763afc24c23adefc1c502270ab4")
+        api_key = os.getenv("DASHSCOPE_API_KEY")
+        if not api_key:
+            raise ValueError("DASHSCOPE_API_KEY is not set")
         model_name = os.getenv("LLM_MODEL_NAME", "qwen-max")  # Using qwen-max for detailed reports
 
         self.llm = ChatTongyi(

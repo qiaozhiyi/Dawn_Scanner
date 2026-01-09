@@ -1,0 +1,46 @@
+# Dawn Scanner Report - OWASP Juice Shop
+
+- Target: http://host.docker.internal:3000
+- Task ID: task_1767946345062117087
+- Status: completed
+- Summary: Found vulnerabilities: 1 high severity, 1 medium severity
+- Baseline: Juice Shop challenges.yml (version 19.1.1)
+
+## Baseline Coverage
+- Categories in baseline: 14
+- Categories covered by scan: 5
+- Coverage: 35.7%
+
+### Covered Categories
+- Command Injection
+- Crypto/Secrets
+- Security Headers
+- TLS/HTTPS
+- XSS
+
+### Missing Categories (with sample challenges)
+- Auth/Session: Bjoern's Favorite Pet, Blockchain Hype, NFT Takeover, Empty User Registration, Forged Signed JWT
+- CSRF: CSRF
+- File Upload: Access Log, Arbitrary File Write, Forgotten Developer Backup, Forgotten Sales Backup, Upload Size
+- Info Disclosure: Email Leak, Leaked Unsafe Product, Exposed credentials
+- Misconfiguration: Error Handling
+- Other: Admin Registration, Admin Section, Mint the Honey Pot, Wallet Depletion, Web3 Sandbox
+- SQL Injection: Change Bender's Password, Database Schema, Login Bjoern, Login MC SafeSearch, Login Support Team
+- SSRF: SSRF
+- XXE: XXE Data Access, XXE DoS
+
+## Vulnerabilities
+### 1. SSL/TLS Missing
+- Severity: High
+- URL: http://host.docker.internal:3000/
+- Description: Site does not use HTTPS encryption
+- Details: The website does not use HTTPS, making data transmission vulnerable to interception
+
+### 2. Missing Security Headers
+- Severity: Medium
+- URL: http://host.docker.internal:3000/
+- Description: Missing important security headers: X-XSS-Protection (cross-site scripting), Content-Security-Policy (script injection)
+- Details: The server does not implement important security headers that protect against common attacks
+
+## LLM Report
+Initial scan report generated

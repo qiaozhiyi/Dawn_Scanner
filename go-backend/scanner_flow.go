@@ -6,7 +6,10 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -80,7 +83,8 @@ func (s *Scanner) executeCompleteScan(taskID string) {
 		// Handle error
 		task.Status = TaskFailed
 		task.Error = fmt.Sprintf("Scan failed: %v", err)
-		task.CompletedAt = &now
+		completedAt := time.Now()
+		task.CompletedAt = &completedAt
 		s.taskStore.UpdateTask(task)
 
 		LogEvent("scan_failed", fmt.Sprintf("Scan failed for task %s: %v", taskID, err), nil)
@@ -96,7 +100,8 @@ func (s *Scanner) executeCompleteScan(taskID string) {
 
 	// Update task status to completed
 	task.Status = TaskCompleted
-	task.CompletedAt = &now
+	completedAt := time.Now()
+	task.CompletedAt = &completedAt
 	if err := s.taskStore.UpdateTask(task); err != nil {
 		LogEvent("error", fmt.Sprintf("Failed to update task %s with results: %v", taskID, err), nil)
 		return
@@ -113,49 +118,38 @@ func (s *Scanner) executeCompleteScan(taskID string) {
 	go s.generateDetailedReport(task.ID)
 }
 
-// callPythonWorker simulates calling the Python worker
-// In a real implementation, this would make an HTTP call to the Python worker service
+// callPythonWorker calls the Python worker service to perform the scan
 func (s *Scanner) callPythonWorker(url string) (*PythonWorkerResult, error) {
-	// Simulate calling the Python worker service
-	// In a real implementation, this would be an HTTP request to the Python worker
-
-	// For demonstration, we'll simulate the response
-	time.Sleep(3 * time.Second) // Simulate scan time
-
-	result := &PythonWorkerResult{
-		URL: url,
-		Vulnerabilities: []Vulnerability{
-			{
-				ID:          "vuln-001",
-				Type:        "SQL Injection",
-				Severity:    "High",
-				Description: "Potential SQL injection vulnerability detected",
-				URL:         url,
-				Details:     "Input validation is not properly implemented for user inputs",
-			},
-			{
-				ID:          "vuln-002",
-				Type:        "XSS",
-				Severity:    "Medium",
-				Description: "Cross-site scripting vulnerability detected",
-				URL:         url,
-				Details:     "Unsanitized user input in output context",
-			},
-			{
-				ID:          "vuln-003",
-				Type:        "Information Disclosure",
-				Severity:    "Low",
-				Description: "Sensitive information disclosed in error messages",
-				URL:         url,
-				Details:     "Application reveals internal information in error responses",
-			},
-		},
-		Summary:      "Found 3 vulnerabilities: 1 High, 1 Medium, 1 Low severity",
-		Timestamp:    time.Now().Format(time.RFC3339),
-		ScanDuration: 3.0,
+	baseURL := os.Getenv("PYTHON_WORKER_URL")
+	if baseURL == "" {
+		baseURL = "http://python-worker:9000"
 	}
 
-	return result, nil
+	reqBody := map[string]string{"url": url}
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal python worker request: %w", err)
+	}
+
+	workerURL := fmt.Sprintf("%s/api/scan", baseURL)
+	client := &http.Client{Timeout: 300 * time.Second}
+	resp, err := client.Post(workerURL, "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, fmt.Errorf("failed to call python worker: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("python worker returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var result PythonWorkerResult
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode python worker response: %w", err)
+	}
+
+	return &result, nil
 }
 
 // PythonWorkerResult represents the result from the Python worker

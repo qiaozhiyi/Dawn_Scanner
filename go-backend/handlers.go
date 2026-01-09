@@ -42,7 +42,8 @@ func (h *Handlers) SubmitScanTask(c *gin.Context) {
 		return
 	}
 
-	task, err := h.TaskStore.CreateTask(req.URL)
+	scanner := NewScanner(h.TaskStore)
+	task, err := scanner.CompleteScanFlow(req.URL)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to create scan task",
@@ -50,10 +51,6 @@ func (h *Handlers) SubmitScanTask(c *gin.Context) {
 		})
 		return
 	}
-
-	// 这里应该启动实际的扫描工作，可以是异步的
-	// 对于演示，我们只是将任务状态设置为运行中
-	go h.executeScan(task.ID)
 
 	c.JSON(http.StatusCreated, SubmitScanTaskResponse{
 		TaskID: task.ID,

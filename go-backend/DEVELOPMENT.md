@@ -20,6 +20,7 @@ go-backend/
 - `GO_ENV`=development|production
 - `PORT`=8080
 - `LLM_SERVICE_URL`=http://llm-service:8000
+- `PYTHON_WORKER_URL`=http://python-worker:9000
 - `OPENAI_API_KEY`（若后端直接调用 OpenAI）
 
 不要把密钥写到代码或 Dockerfile 中。

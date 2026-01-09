@@ -3,6 +3,7 @@ flask
 langchain
 openai
 requests
+aiohttp
 zaproxy
 pandas
 numpy

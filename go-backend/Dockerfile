@@ -1,5 +1,5 @@
 # 使用官方Go镜像作为构建环境
-FROM golang:1.21-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 # 设置工作目录
 WORKDIR /app
@@ -19,8 +19,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o dawn-scanner .
 # 使用轻量级镜像作为运行环境
 FROM alpine:latest
 
-# 安装ca-certificates，以便应用可以连接到HTTPS端点
-RUN apk --no-cache add ca-certificates
+# 安装ca-certificates和su-exec，以便应用可以连接到HTTPS端点并在启动时降权
+RUN apk --no-cache add ca-certificates su-exec
 
 # 创建非root用户
 RUN adduser -D -s /bin/sh dawnuser
@@ -38,11 +38,13 @@ RUN chown dawnuser:dawnuser dawn-scanner
 RUN mkdir -p /app/data/tasks /app/data/results /app/data/reports /app/logs && \
     chown -R dawnuser:dawnuser /app/data /app/logs
 
-# 切换到非root用户
-USER dawnuser
+# 复制入口脚本
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
 # 暴露端口
 EXPOSE 8080
 
-# 运行二进制文件
+# 使用入口脚本在启动时修正卷权限并降权运行
+ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["./dawn-scanner"]

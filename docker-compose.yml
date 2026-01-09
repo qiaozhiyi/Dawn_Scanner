@@ -13,6 +13,7 @@ services:
       - GO_ENV=production
       - PORT=8080
       - LLM_SERVICE_URL=http://llm-service:8000
+      - PYTHON_WORKER_URL=http://python-worker:9000
       - DEFAULT_AUTH_TOKEN=dawn_scanner_dev_token
       - TASK_STORE_PATH=/app/data/tasks/tasks.json
     volumes:
@@ -20,6 +21,7 @@ services:
       - ./logs:/app/logs
     depends_on:
       - llm-service
+      - python-worker
     restart: unless-stopped
 
   python-worker:
@@ -27,13 +29,14 @@ services:
       context: .
       dockerfile: python-worker/Dockerfile
     container_name: dawn-scanner-worker
+    ports:
+      - "9000:9000"
     environment:
       - PYTHON_ENV=production
+      - PORT=9000
       - SCAN_TIMEOUT=300
     volumes:
       - dawn-data:/app/data
-    depends_on:
-      - go-backend
     restart: unless-stopped
 
   llm-service:
@@ -46,7 +49,7 @@ services:
     environment:
       - ENV=production
       - PORT=8000
-      - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY:-sk-83dc2763afc24c23adefc1c502270ab4}
+      - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}
     volumes:
       - dawn-data:/app/data
     restart: unless-stopped
@@ -66,6 +69,7 @@ services:
       - ENV=development
       - PORT=8080
       - LLM_SERVICE_URL=http://llm-service:8000
+      - PYTHON_WORKER_URL=http://python-worker:9000
       - DEFAULT_AUTH_TOKEN=dawn_scanner_dev_token
     volumes:
       - .:/app

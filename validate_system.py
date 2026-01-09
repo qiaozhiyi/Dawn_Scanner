@@ -7,11 +7,14 @@ import os
 import sys
 import importlib.util
 
+REPO_ROOT = os.path.abspath(os.path.dirname(__file__))
+
+
 def check_go_backend():
     """检查Go后端文件"""
     print("检查Go后端文件...")
     
-    backend_dir = "/IdeaProjects/Dawn_Scanner/go-backend"
+    backend_dir = os.path.join(REPO_ROOT, "go-backend")
     expected_files = [
         "main.go",
         "task_store.go", 
@@ -37,8 +40,9 @@ def check_python_worker():
     """检查Python worker文件"""
     print("\n检查Python worker文件...")
     
-    worker_dir = "/IdeaProjects/Dawn_Scanner/python-worker"
+    worker_dir = os.path.join(REPO_ROOT, "python-worker")
     expected_files = [
+        "app.py",
         "worker.py",
         "Dockerfile"
     ]
@@ -58,7 +62,7 @@ def check_llm_service():
     """检查LLM服务文件"""
     print("\n检查LLM服务文件...")
     
-    llm_dir = "/IdeaProjects/Dawn_Scanner/llm-service"
+    llm_dir = os.path.join(REPO_ROOT, "llm-service")
     expected_files = [
         "app.py",
         "requirements.txt",
@@ -90,7 +94,7 @@ def check_docker_compose():
     """检查docker-compose文件"""
     print("\n检查Docker Compose配置...")
     
-    compose_file = "/IdeaProjects/Dawn_Scanner/docker-compose.yml"
+    compose_file = os.path.join(REPO_ROOT, "docker-compose.yml")
     if os.path.exists(compose_file):
         print("  ✓ docker-compose.yml")
         
@@ -111,7 +115,7 @@ def check_test_script():
     """检查测试脚本"""
     print("\n检查测试脚本...")
     
-    test_file = "/IdeaProjects/Dawn_Scanner/test_system.py"
+    test_file = os.path.join(REPO_ROOT, "test_system.py")
     if os.path.exists(test_file):
         print("  ✓ test_system.py")
         return True
@@ -124,8 +128,8 @@ def validate_python_syntax():
     print("\n验证Python文件语法...")
     
     files_to_check = [
-        "/IdeaProjects/Dawn_Scanner/llm-service/app.py",
-        "/IdeaProjects/Dawn_Scanner/test_system.py"
+        os.path.join(REPO_ROOT, "llm-service", "app.py"),
+        os.path.join(REPO_ROOT, "test_system.py")
     ]
     
     all_valid = True
