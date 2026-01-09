@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# One-click: start Juice Shop, run scan, and write a Markdown report.
+# 一键：启动 Juice Shop、执行扫描并生成中文 Markdown 报告。
 set -euo pipefail
 
 TARGET_NAME="juice-shop"
@@ -57,7 +57,7 @@ while time.time() - start < timeout:
     try:
         r = requests.get(url, timeout=2)
         if r.status_code == 200:
-            print("Juice Shop is up")
+            print("Juice Shop 已就绪")
             raise SystemExit(0)
     except Exception:
         pass
@@ -99,6 +99,7 @@ import time
 import requests
 from datetime import datetime
 import yaml
+import sys
 
 api = "http://localhost:8080"
 headers = {"Authorization": "Bearer dawn_scanner_dev_token", "Content-Type": "application/json"}
@@ -122,6 +123,16 @@ result = data.get("result", {})
 vulns = result.get("vulnerabilities", [])
 summary = result.get("summary", "")
 report_text = result.get("report", "")
+
+# Poll until LLM report replaces the placeholder text.
+llm_start = time.time()
+while report_text in ("", "Initial scan report generated") and time.time() - llm_start < 120:
+    time.sleep(5)
+    r = requests.get(f"{api}/api/tasks/{task_id}", headers=headers, timeout=10)
+    r.raise_for_status()
+    data = r.json()
+    result = data.get("result", {})
+    report_text = result.get("report", "")
 
 baseline_path = os.path.join("baselines", "juice_shop_challenges.yml")
 package_path = os.path.join("baselines", "juice_shop_package.json")
@@ -174,7 +185,7 @@ def categorize_all(text):
     for cat, keys in category_rules:
         if any(k in t for k in keys):
             matches.append(cat)
-    return matches or ["Other"]
+    return matches
 
 baseline_categories = {}
 for ch in challenges:
@@ -202,54 +213,68 @@ os.makedirs(report_dir, exist_ok=True)
 path = os.path.join(report_dir, f"juice_shop_report_{ts}.md")
 
 lines = []
-lines.append(f"# Dawn Scanner Report - OWASP Juice Shop")
+lines.append(f"# Dawn Scanner 报告 - OWASP Juice Shop")
 lines.append("")
-lines.append(f"- Target: http://host.docker.internal:3000")
-lines.append(f"- Task ID: {task_id}")
-lines.append(f"- Status: {data.get('status')}")
-lines.append(f"- Summary: {summary}")
-lines.append(f"- Baseline: Juice Shop challenges.yml (version {baseline_version})")
+lines.append(f"- 目标: http://host.docker.internal:3000")
+lines.append(f"- 任务 ID: {task_id}")
+lines.append(f"- 状态: {data.get('status')}")
+lines.append(f"- 摘要: {summary}")
+lines.append(f"- 基线: Juice Shop challenges.yml (版本 {baseline_version})")
 lines.append("")
-lines.append("## Baseline Coverage")
-lines.append(f"- Categories in baseline: {len(baseline_cat_list)}")
-lines.append(f"- Categories covered by scan: {len(covered)}")
-lines.append(f"- Coverage: {coverage_pct:.1f}%")
+lines.append("## 基线覆盖情况")
+lines.append(f"- 基线类别数: {len(baseline_cat_list)}")
+lines.append(f"- 扫描覆盖类别数: {len(covered)}")
+lines.append(f"- 覆盖率: {coverage_pct:.1f}%")
 lines.append("")
-lines.append("### Covered Categories")
+lines.append("### 已覆盖类别")
 if covered:
     lines.extend([f"- {c}" for c in covered])
 else:
-    lines.append("- None")
+    lines.append("- 无")
 lines.append("")
-lines.append("### Missing Categories (with sample challenges)")
+lines.append("### 缺失类别（示例挑战）")
 if missing:
     for c in missing:
         sample = baseline_categories.get(c, [])[:5]
         lines.append(f"- {c}: {', '.join(sample)}")
 else:
-    lines.append("- None")
+    lines.append("- 无")
 lines.append("")
-lines.append("## Vulnerabilities")
+lines.append("## 漏洞列表")
 if not vulns:
-    lines.append("No vulnerabilities reported.")
+    lines.append("未发现漏洞。")
 else:
     for idx, v in enumerate(vulns, 1):
         lines.append(f"### {idx}. {v.get('type', 'Unknown')}")
-        lines.append(f"- Severity: {v.get('severity', 'Unknown')}")
+        lines.append(f"- 严重程度: {v.get('severity', 'Unknown')}")
         lines.append(f"- URL: {v.get('url', '')}")
-        lines.append(f"- Description: {v.get('description', '')}")
+        lines.append(f"- 描述: {v.get('description', '')}")
         details = v.get("details", "")
         if details:
-            lines.append(f"- Details: {details}")
+            lines.append(f"- 详情: {details}")
         lines.append("")
 
 if report_text:
-    lines.append("## LLM Report")
+    lines.append("## LLM 报告")
     lines.append(report_text)
     lines.append("")
 
 with open(path, "w", encoding="utf-8") as f:
     f.write("\n".join(lines))
+
+sys.path.insert(0, os.path.join(os.getcwd(), "scripts"))
+try:
+    from juice_shop_targeted_checks import run_checks
+    targeted = run_checks("http://host.docker.internal:3000")
+except Exception as exc:
+    targeted = [{"check": "TargetedScripts", "hit": False, "details": f"error: {exc}"}]
+
+with open(path, "a", encoding="utf-8") as f:
+    f.write("\n")
+    f.write("## 定向探测脚本结果\n")
+    for item in targeted:
+        status = "命中" if item.get("hit") else "未命中"
+        f.write(f"- {item.get('check')}: {status} ({item.get('details')})\n")
 
 print(path)
 PY
